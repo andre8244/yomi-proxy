@@ -24,5 +24,5 @@ pip3 install -r dev.txt
 
 3 - Execute server : 
 ```
-python3 app.py
+YOROI_CLIENT_ID=<id> YOROI_CLIENT_SECRET=<secret> python3 app.py
 ```

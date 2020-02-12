@@ -2,32 +2,26 @@
 import json
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 import requests
+from flask import current_app as app
 from lib.text.convertTuple import convertTuple
-
-
-client_id = ""
-client_secret = ""
-grant_type = 'client_credentials'
-scope = "/papi/sandbox.submit"
-BASE_URL = 'https://users.yoroi.company'
 
 
 def yoroi_send_sample(filename,fullPath):
 	data_token = {
-		"client_id": client_id,
-		"grant_type": grant_type,
-		"client_secret": client_secret,
-		"scope": scope
+		"client_id": app.config["YOROI_CLIENT_ID"],
+		"grant_type": "client_credentials",
+		"client_secret": app.config["YOROI_CLIENT_SECRET"],
+		"scope": "/papi/sandbox.submit"
 	}
-	r = requests.post(BASE_URL+'/pauth/token',
+
+	r = requests.post(app.config["BASE_URL"]+'/pauth/token',
 					  data=data_token)
 	token_type = json.loads(r.text)
 	token = token_type['access_token']
 
-	# Seconda chiamata - SANDBOX
 	headers = {"Authorization": "Bearer %s" % token }
 	files = {'file' : (filename, open(fullPath, 'rb'))}                                     
-	s = requests.post(BASE_URL+'/papi/sandbox',                                             
+	s = requests.post(app.config["BASE_URL"]+'/papi/sandbox',                                             
 						headers=headers,                                                    
 						files=files)
 	if s.status_code == 200:
