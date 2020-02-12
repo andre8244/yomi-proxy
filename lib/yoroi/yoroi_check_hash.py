@@ -4,7 +4,6 @@ from flask_json import FlaskJSON, JsonError, json_response, as_json
 import requests
 from flask import request
 from lib.text.convertTuple import convertTuple
-from lib.mysql.add_mysql_data import add_mysq_data_min
 
 
 client_id = ""
@@ -16,7 +15,6 @@ BASE_URL = 'https://users.yoroi.company'
 
 
 def yoroi_check_sha256(hash):
-	print("[+]	FUNZIONE GET SANDBOX TOKEN")
 	data_token = {
 		"client_id": client_id,
 		"grant_type": grant_type,
@@ -32,13 +30,10 @@ def yoroi_check_sha256(hash):
 	s = requests.get(BASE_URL+'/papi/sandbox/hash/'+hash, headers=headers)
 	result = json.loads(s.content)
 	if s.status_code == 200:
-		print("[+]	RETRIVE INFORMAZIONI DA YOMI...")
-		for r in result:
-			hash = r['file']['hash']['sha256'],
-			hash = convertTuple(hash)
-			score = r['score'],
-			score = convertTuple(score)
-			return add_mysq_data_min(hash, score)
+		if not result:
+			return  json_response(score=-1, malware='', yoroi_sha256='', yomi_id=-1, status_=404)
+		r = result[0]
+		return  json_response(score=r['score'], malware=r['threat']['name'], yoroi_sha256=r['file']['hash']['sha256'], yomi_id=0)
 	elif s.status_code == 400:
 		hack = "Are you try to hack me? "
 		ip = request.remote_addr

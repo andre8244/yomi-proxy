@@ -3,20 +3,19 @@ from flask import Flask, redirect, url_for, request, render_template, flash, abo
 from werkzeug.utils import secure_filename
 import hashlib
 import sys, os, time, json
+import base64, tempfile
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 #lib nostre
 from lib.text.convertTuple import convertTuple
 from lib.yoroi.yoroi_send_sample import yoroi_send_sample
 from lib.yoroi.yoroi_check_hash import yoroi_check_sha256
-from lib.mysql.check_mysql import check_mysql
-from lib.mysql.check_hash import check_hash
 
 #config
 app = Flask(__name__)
 FlaskJSON(app)
 app.secret_key = "ui7rie5oThee7xa1yahxu2Boh5Riesei2PosieyiHaijahxahngidoogh9ceequ1"
 app.config['JSON_ADD_STATUS'] = False
-UPLOAD_FOLDER = '/root/yomi-proxy/sample/'
+UPLOAD_FOLDER = '/tmp/yomi'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
@@ -68,10 +67,22 @@ def upload_file():
     		</form>                                                             
     		'''
 
+@app.route('/submit', methods=['POST'])
+def uplod_base64():
+    content = request.get_json()
+    # print("content=%s" % content['data']);
+    d = base64.decodestring(content['data'].encode())
+    fd, name = tempfile.mkstemp(dir=UPLOAD_FOLDER)
+    print("filename=%s" %name)
+    with os.fdopen(fd, "wb") as tmp:
+            tmp.write(d)
+            tmp.close()
+    return yoroi_send_sample('upload', name)
+
 
 @app.route('/hash/<string:hash>', methods=['GET'])
 def check(hash):
-    return check_hash(hash)
+    return yoroi_check_sha256(hash)
 
 if __name__ == '__main__':
     #app.run(ssl_context=('cert.pem', 'key.pem'),debug=True,host="0.0.0.0")

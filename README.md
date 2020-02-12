@@ -7,34 +7,22 @@ Before install this package, you has to install <a href="https://github.com/neth
 
 - python3
 - pip3
-- MySQL/MariaDB
 
 # INSTALLATION
 
 1 - Clone this repository on your $HOME local server.
 
->git clone https://github.com/nethesis/yomi-proxy
+```
+git clone https://github.com/nethesis/yomi-proxy
+yum install python3-pip
+```
 
 2 - Install all python package 
+```
+pip3 install -r dev.txt
+```
 
->pip3 install -r dev.txt
-
-3 - Create user yomi_user 
-
-> CREATE USER 'yomi_user'@'%' IDENTIFIED BY 'yomi_password';
-
-4 - Create MySQL/MariaDB database :
-
-> CREATE DATABASE nethesis_sandbox
-
-5 - Grant privileges :
-
-> GRANT ALL PRIVILEGES ON nethesis_sandbox.* TO 'yomi_user'@'%';
-
-6 - Load database :
-
-> mysql -u yomi_user -pyomi_password nethesis_sandbox < nethesis_sandbox.sql
-
-7 - Execute server : 
-
-> python3 app.py
+3 - Execute server : 
+```
+python3 app.py
+```

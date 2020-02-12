@@ -3,7 +3,6 @@ import json
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 import requests
 from lib.text.convertTuple import convertTuple
-from lib.mysql.add_mysql_data import add_mysq_data
 
 
 client_id = ""
@@ -13,8 +12,7 @@ scope = "/papi/sandbox.submit"
 BASE_URL = 'https://users.yoroi.company'
 
 
-def yoroi_send_sample(hash,filename,fullPath,UPLOAD_FOLDER):
-	print("[+]	FUNZIONE INVIO SANDBOX")
+def yoroi_send_sample(filename,fullPath):
 	data_token = {
 		"client_id": client_id,
 		"grant_type": grant_type,
@@ -32,24 +30,19 @@ def yoroi_send_sample(hash,filename,fullPath,UPLOAD_FOLDER):
 	s = requests.post(BASE_URL+'/papi/sandbox',                                             
 						headers=headers,                                                    
 						files=files)
-	print(hash)
-	print(s.content)
 	if s.status_code == 200:
-		#INSERT MYSQL                                                                       
 		result = json.loads(s.content)                                                      
-		print("[+]	RETRIVE INFORMAZIONI DA YOMI...")
 		score = result['score'],                                                            
 		score = convertTuple(score)                                                         
-		malname = result['file']['filetype']                                                
-		malname = convertTuple(malname)                                                     
+		malname = result['file']['filetype']
+		malname = convertTuple(malname) 
 		scan_id = result['_id']
 		if score == None:
-			msg = "Analisi in corso."
-			return json_response(ERRORE=msg)
+			return json_response(scan_id=-1, hash='', malware='', score=-1, status_=404)
 		else:
-			return add_mysq_data(scan_id,hash,malname,score)
+			return json_response(scan_id=scan_id, hash='', malware=malname, score=score, status_=200)
 	else:
-		return json_response(ERRORE=s.status_code)
+		return json_response(scan_id=-1, hash='', malware='', score=-1, status=s.status_code)
 
 
 
