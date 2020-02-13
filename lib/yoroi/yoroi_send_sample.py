@@ -32,10 +32,13 @@ def yoroi_send_sample(filename,fullPath):
 		malname = convertTuple(malname) 
 		scan_id = result['_id']
 		if score == None:
-			return json_response(scan_id=-1, hash='', malware='', score=-1, status_=404)
+			# submission accepted, return work in progress status
+			return json_response(scan_id=-1, hash='', malware='', score=-1, status_=202)
 		else:
+			# we already have a score, jsut return it
 			return json_response(scan_id=scan_id, hash='', malware=malname, score=score, status_=200)
 	else:
+		# upstream error
 		return json_response(scan_id=-1, hash='', malware='', score=-1, status=s.status_code)
 
 
