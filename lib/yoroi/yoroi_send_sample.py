@@ -3,7 +3,6 @@ import json
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 import requests
 from flask import current_app as app
-from lib.text.convertTuple import convertTuple
 
 
 def yoroi_send_sample(filename,fullPath):
@@ -25,18 +24,14 @@ def yoroi_send_sample(filename,fullPath):
 						headers=headers,                                                    
 						files=files)
 	if s.status_code == 200:
-		result = json.loads(s.content)                                                      
-		score = result['score'],                                                            
-		score = convertTuple(score)                                                         
-		malname = result['file']['filetype']
-		malname = convertTuple(malname) 
-		scan_id = result['_id']
-		if score == None:
+		result = json.loads(s.content)
+
+		if result['score'] is None or result['_id'] == "":
 			# submission accepted, return work in progress status
 			return json_response(scan_id=-1, hash='', malware='', score=-1, status_=202)
 		else:
-			# we already have a score, jsut return it
-			return json_response(scan_id=scan_id, hash='', malware=malname, score=score, status_=200)
+			# we already have a score, just return it
+			return json_response(scan_id=result['_id'], hash=result['file']['hash']['sha256'], malware=result['threat']['name'], score=result['score'], status_=200)
 	else:
 		# upstream error
 		return json_response(scan_id=-1, hash='', malware='', score=-1, status=s.status_code)

@@ -4,7 +4,6 @@ from flask_json import FlaskJSON, JsonError, json_response, as_json
 import requests
 from flask import request
 from flask import current_app as app
-from lib.text.convertTuple import convertTuple
 
 
 def yoroi_check_sha256(hash):
