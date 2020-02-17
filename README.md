@@ -1,6 +1,6 @@
 # INTRO
 
-YOMI PROXY it's a flask application server that, in combination with <a href="https://github.com/nethesis/yomi-rspamd">yomi-rspamd</a>, permit to get every mail attachment sent from rspamd lua plugin and send to <a href="https://yoroi.company">yoroi sandbox (YOMI)</a>.
+YOMI PROXY it's a flask application server that, in combination with <a href="https://github.com/nethesis/yomi-rspamd">yomi-rspamd</a>, permit to get every mail attachment sent from rspamd lua plugin and send to <a href="https://www.yoroi.company">yoroi sandbox (YOMI)</a>.
 Before install this package, you has to install <a href="https://github.com/nethesis/yomi-rspamd">yomi-rspamd</a>.
 
 # PREREQUISITE
