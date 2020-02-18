@@ -38,7 +38,7 @@ def uplod_base64():
     tmp.write(d)
     tmp.close()
 
-    return yoroi_send_sample('upload', name)
+    return yoroi_send_sample(sha, name)
 
 
 @app.route('/hash/<string:hash>', methods=['GET'])

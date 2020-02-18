@@ -5,40 +5,41 @@ import json
 from flask import request
 from flask import current_app as app
 
-bearer = { '/papi/sandbox.lookup' : '', '/papi/sandbox.submit' : '' }
+bearer = ''
 
-def authenticate(scope, refresh = False):
-	if bearer[scope] and not refresh:
-		return bearer[scope]
+def authenticate():
+	global bearer
+	if bearer:
+		return bearer
 	else:
+		print("Generating token")
 		data_token = {
 			"client_id": app.config["YOROI_CLIENT_ID"],
 			"grant_type": "client_credentials",
 			"client_secret": app.config["YOROI_CLIENT_SECRET"],
-			"scope": scope
+			"scope": '/papi/sandbox.lookup,/papi/sandbox.submit'
 		}
 		r = requests.post(app.config["BASE_URL"]+'/pauth/token', data=json.dumps(data_token), headers={'Content-type': 'application/json'})
 		if r.status_code != 200:
-			bearer[scope] = ''
+			print("Token generation failed")
+			bearer = ''
 		else:
 			try:
 				response = r.json()
-				bearer[scope] = response['access_token']
+				bearer = response['access_token']
+				print("New token %s" % bearer)
 			except:
-				bearer[scope] = ''
-		return bearer[scope]
+				bearer = ''
+		return bearer
 
 
 def yoroi_check_sha256(hash):
-	bearer = authenticate('/papi/sandbox.lookup')
+	bearer = authenticate()
 	headers = {"Authorization": "Bearer %s" % bearer, 'Content-type': 'application/json'}
 	s = requests.get(app.config["BASE_URL"]+'/papi/sandbox/hash/'+hash, headers=headers)
 
-        # refresh token if expired
 	if s.status_code == 401:
-		bearer = authenticate('/papi/sandbox.lookup', True)
-		headers = {"Authorization": "Bearer %s" % bearer, 'Content-type': 'application/json'}
-		s = requests.get(app.config["BASE_URL"]+'/papi/sandbox/hash/'+hash, headers=headers)
+		print("WARNING: expired beaerer: %s response: %s" % (bearer, s.text))
 	
 	if s.status_code == 200:
 		try:
@@ -55,16 +56,14 @@ def yoroi_check_sha256(hash):
 		return json_response(score=-1, malware='', yoroi_sha256='', yomi_id=-1, status_=s.status_code)
 
 def yoroi_send_sample(filename,fullPath):
-	bearer = authenticate('/papi/sandbox.submit')
+	bearer = authenticate()
 	headers = {"Authorization": "Bearer %s" % bearer}
-	files = {'file' : (filename, open(fullPath, 'rb'))}                                     
+	files = {'file' : (filename, open(fullPath, 'rb'))} 
+
 	s = requests.post(app.config["BASE_URL"]+'/papi/sandbox', headers=headers, files=files)
 
-        # refresh token if expired
 	if s.status_code == 401:
-		bearer = authenticate('/papi/sandbox.submit', True)
-		headers = {"Authorization": "Bearer %s" % bearer}
-		s = requests.post(app.config["BASE_URL"]+'/papi/sandbox', headers=headers, files=files)
+		print("WARNING: expired beaerer: %s response: %s" % (bearer, s.text))
 	
 	if s.status_code == 200:
 		result = json.loads(s.content)
@@ -77,7 +76,7 @@ def yoroi_send_sample(filename,fullPath):
 			return json_response(scan_id=result['_id'], hash=result['file']['hash']['sha256'], malware=result['threat']['name'], score=result['score'], status_=200)
 	else:
 		# upstream error
-		return json_response(scan_id=-1, hash='', malware='', score=-1, status=s.status_code)
+		return json_response(scan_id=-1, hash='', malware='', score=-1, status_=s.status_code)
 
 
 
