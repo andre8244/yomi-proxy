@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask import Flask, redirect, url_for, request, render_template, flash, abort, request
-from werkzeug.utils import secure_filename
-import hashlib
-import sys, os, time, json
-import base64, tempfile
+import sys, os, time, json, base64, tempfile, hashlib
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 
 from lib.yoroi.yomi import yoroi_send_sample, yoroi_check_sha256
@@ -33,11 +30,14 @@ def index():
 def uplod_base64():
     content = request.get_json()
     d = base64.decodestring(content['data'].encode())
-    fd, name = tempfile.mkstemp(dir=app.config['UPLOAD_FOLDER'])
-    # print("filename=%s" %name)
-    with os.fdopen(fd, "wb") as tmp:
-            tmp.write(d)
-            tmp.close()
+
+    # temporary file name is sha256 hash of the content
+    sha = hashlib.sha256(d).hexdigest()
+    name = os.path.join(app.config['UPLOAD_FOLDER'],sha)
+    tmp = open(name,"wb")
+    tmp.write(d)
+    tmp.close()
+
     return yoroi_send_sample('upload', name)
 
 
