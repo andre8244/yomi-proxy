@@ -6,8 +6,7 @@ import sys, os, time, json
 import base64, tempfile
 from flask_json import FlaskJSON, JsonError, json_response, as_json
 
-from lib.yoroi.yoroi_send_sample import yoroi_send_sample
-from lib.yoroi.yoroi_check_hash import yoroi_check_sha256
+from lib.yoroi.yomi import yoroi_send_sample, yoroi_check_sha256
 
 #config
 app = Flask(__name__)
