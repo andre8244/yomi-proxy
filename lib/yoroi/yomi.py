@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from flask_json import FlaskJSON, JsonError, json_response, as_json
+from flask_json import FlaskJSON, JsonError, json_response
 import requests
 import json
 from flask import request
@@ -7,8 +7,8 @@ from flask import current_app as app
 
 bearer = { '/papi/sandbox.lookup' : '', '/papi/sandbox.submit' : '' }
 
-def authenticate(scope):
-	if bearer[scope]:
+def authenticate(scope, refresh = False):
+	if bearer[scope] and not refresh:
 		return bearer[scope]
 	else:
 		data_token = {
@@ -33,14 +33,23 @@ def yoroi_check_sha256(hash):
 	bearer = authenticate('/papi/sandbox.lookup')
 	headers = {"Authorization": "Bearer %s" % bearer, 'Content-type': 'application/json'}
 	s = requests.get(app.config["BASE_URL"]+'/papi/sandbox/hash/'+hash, headers=headers)
-	try:
-		r = s.json()
-	except:
-		return json_response(score=-1, malware='', yoroi_sha256='', yomi_id=-1, status_=s.status_code)
+
+        # refresh token if expired
+	if s.status_code == 401:
+		bearer = authenticate('/papi/sandbox.lookup', True)
+		headers = {"Authorization": "Bearer %s" % bearer, 'Content-type': 'application/json'}
+		s = requests.get(app.config["BASE_URL"]+'/papi/sandbox/hash/'+hash, headers=headers)
+	
 	if s.status_code == 200:
+		try:
+			r = s.json()
+		except:
+			return json_response(score=-1, malware='', yoroi_sha256='', yomi_id=-1, status_=500)
+
 		if not r:
 			return  json_response(score=-1, malware='', yoroi_sha256='', yomi_id=-1, status_=404)
 		r = r[0]
+		score = r['score'] if r['score'] else -1
 		return  json_response(score=r['score'], malware=r['threat']['name'], yoroi_sha256=r['file']['hash']['sha256'], yomi_id=0)
 	else:
 		return json_response(score=-1, malware='', yoroi_sha256='', yomi_id=-1, status_=s.status_code)
@@ -49,9 +58,14 @@ def yoroi_send_sample(filename,fullPath):
 	bearer = authenticate('/papi/sandbox.submit')
 	headers = {"Authorization": "Bearer %s" % bearer}
 	files = {'file' : (filename, open(fullPath, 'rb'))}                                     
-	s = requests.post(app.config["BASE_URL"]+'/papi/sandbox',                                             
-						headers=headers,                                                    
-						files=files)
+	s = requests.post(app.config["BASE_URL"]+'/papi/sandbox', headers=headers, files=files)
+
+        # refresh token if expired
+	if s.status_code == 401:
+		bearer = authenticate('/papi/sandbox.submit', True)
+		headers = {"Authorization": "Bearer %s" % bearer}
+		s = requests.post(app.config["BASE_URL"]+'/papi/sandbox', headers=headers, files=files)
+	
 	if s.status_code == 200:
 		result = json.loads(s.content)
 
