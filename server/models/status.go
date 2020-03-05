@@ -23,9 +23,9 @@
 package models
 
 type Status struct {
-	Score       float64 `json:"score"`
-	Malware     string  `json:"malware"`
-	YoroiSha256 string  `json:"yoroi_sha256"`
-	YomiID      int     `json:"yomi_id"`
-	StatusCode  int     `json:"-"`
+	ID         string  `json:"id"`
+	Score      float64 `json:"score"`
+	Malware    string  `json:"malware"`
+	Hash       string  `json:"hash"`
+	StatusCode int     `json:"-"`
 }

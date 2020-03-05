@@ -23,12 +23,14 @@
 package methods
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/nethesis/yomi-proxy/server/cache"
+	"github.com/nethesis/yomi-proxy/server/configuration"
 	"github.com/nethesis/yomi-proxy/server/models"
 	"github.com/nethesis/yomi-proxy/server/utils"
 )
@@ -38,36 +40,40 @@ func CheckStatus(c *gin.Context) {
 }
 
 func CheckHash(c *gin.Context) {
-	// read hash from url
-	hash := c.Param("hash")
-
 	// init status obj
 	var status models.Status
+
+	// read hash from url
+	hash := c.Param("hash")
 
 	// init redis instance
 	r := cache.Instance()
 
 	// check if hash is locally cached
-	score, err := r.Get(hash).Result()
+	var jsonCache models.Status
+	value, err := r.Get(hash).Result()
+	json.Unmarshal([]byte(value), &jsonCache)
 
 	if err == nil {
 		// if locally cached return the value
-		fScore, _ := strconv.ParseFloat(score, 64)
 		status = models.Status{
-			Score:       fScore,
-			Malware:     "",
-			YoroiSha256: hash,
-			YomiID:      0,
-			StatusCode:  200,
+			ID:         jsonCache.ID,
+			Score:      jsonCache.Score,
+			Malware:    jsonCache.Malware,
+			Hash:       jsonCache.Hash,
+			StatusCode: 200,
 		}
 	} else {
 		// send the hash to yomi
 		status = utils.CheckYomiHash(hash)
 
 		// save hash in local cache
-		err = r.Set(hash, status.Score, 0).Err()
-		if err != nil {
-			fmt.Println(err)
+		if status.Malware != "Pending" {
+			jsonStatus, _ := json.Marshal(status)
+			err = r.Set(hash, jsonStatus, 0).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
 		}
 	}
 
@@ -75,30 +81,56 @@ func CheckHash(c *gin.Context) {
 	c.JSON(status.StatusCode, status)
 }
 
-/* func Submit(c *gin.Context) {
-	sessionId := c.PostForm("session_id")
-	operatorId := c.PostForm("operator_id")
+func Submit(c *gin.Context) {
+	// init status obj
+	var status models.Status
 
-	var session models.Session
-	db := database.Instance()
-	db.Where("session_id = ?", sessionId).First(&session)
-
-	if session.Id == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"message": "No session found!"})
+	// read upload file and hash
+	hash := c.PostForm("hash")
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"mode": "read", "error": err.Error()})
 		return
 	}
 
-	sessionCreated := session.Started
-	sessionConnected := time.Now().String()
+	// init redis instance
+	r := cache.Instance()
 
-	log := models.Log{
-		SessionId:        sessionId,
-		OperatorId:       operatorId,
-		SessionCreated:   sessionCreated,
-		SessionConnected: sessionConnected,
+	// check if hash is locally cached
+	var jsonCache models.Status
+	value, err := r.Get(hash).Result()
+	json.Unmarshal([]byte(value), &jsonCache)
+
+	if err == nil {
+		// if locally cached return the value
+		status = models.Status{
+			ID:         jsonCache.ID,
+			Score:      jsonCache.Score,
+			Malware:    jsonCache.Malware,
+			Hash:       jsonCache.Hash,
+			StatusCode: 200,
+		}
+	} else {
+		// save file
+		filename := configuration.Config.YomiUploadPath + "/" + filepath.Base(file.Filename)
+		if err := c.SaveUploadedFile(file, filename); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"mode": "save", "error": err.Error()})
+			return
+		}
+
+		// upload file to yomi
+		status = utils.UploadYomiFile(filename)
+
+		// save hash in local cache
+		if status.StatusCode == 200 {
+			jsonStatus, _ := json.Marshal(status)
+			err = r.Set(hash, jsonStatus, 0).Err()
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
 	}
 
-	db.Save(&log)
-
-	c.JSON(http.StatusCreated, gin.H{"id": log.Id})
-} */
+	// return value
+	c.JSON(status.StatusCode, status)
+}

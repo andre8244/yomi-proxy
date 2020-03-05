@@ -29,11 +29,12 @@ import (
 )
 
 type Configuration struct {
-	ClientID      string `json:"client_id"`
-	ClientSecret  string `json:"client_secret"`
-	RedisAddress  string `json:"redis_address"`
-	RedisPassword string `json:"redis_password"`
-	YomiBaseURL   string `json:"yomi_base_url"`
+	ClientID       string `json:"client_id"`
+	ClientSecret   string `json:"client_secret"`
+	RedisAddress   string `json:"redis_address"`
+	RedisPassword  string `json:"redis_password"`
+	YomiBaseURL    string `json:"yomi_base_url"`
+	YomiUploadPath string `json:"yomi_upload_path"`
 }
 
 var Config = Configuration{}
@@ -64,5 +65,8 @@ func Init(ConfigFilePtr *string) {
 	}
 	if os.Getenv("YOMI_BASE_URL") != "" {
 		Config.YomiBaseURL = os.Getenv("YOMI_BASE_URL")
+	}
+	if os.Getenv("YOMI_UPLOAD_PATH") != "" {
+		Config.YomiUploadPath = os.Getenv("YOMI_UPLOAD_PATH")
 	}
 }

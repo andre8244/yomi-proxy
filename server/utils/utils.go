@@ -26,14 +26,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/nethesis/yomi-proxy/server/configuration"
 	"github.com/nethesis/yomi-proxy/server/models"
 )
 
-func authenticate() string {
+func Authenticate() string {
 	// create request url
 	url := configuration.Config.YomiBaseURL + "/pauth/token"
 
@@ -73,7 +77,7 @@ func authenticate() string {
 
 func CheckYomiHash(hash string) models.Status {
 	// get authentication bearer
-	bearer := authenticate()
+	bearer := Authenticate()
 
 	// create url
 	url := configuration.Config.YomiBaseURL + "/papi/sandbox/hash/" + hash
@@ -93,11 +97,11 @@ func CheckYomiHash(hash string) models.Status {
 	// check request status codes
 	if resp.StatusCode != 200 {
 		return models.Status{
-			Score:       -1,
-			Malware:     "",
-			YoroiSha256: "",
-			YomiID:      -1,
-			StatusCode:  resp.StatusCode,
+			ID:         "",
+			Score:      -1,
+			Malware:    "",
+			Hash:       "",
+			StatusCode: resp.StatusCode,
 		}
 	}
 
@@ -109,32 +113,110 @@ func CheckYomiHash(hash string) models.Status {
 	// check json parsing
 	if err != nil {
 		return models.Status{
-			Score:       -1,
-			Malware:     "",
-			YoroiSha256: "",
-			YomiID:      -1,
-			StatusCode:  500,
+			ID:         "",
+			Score:      -1,
+			Malware:    "",
+			Hash:       "",
+			StatusCode: 500,
 		}
 	}
 
 	// hash not found
 	if len(respHash) == 0 {
 		return models.Status{
-			Score:       -1,
-			Malware:     "",
-			YoroiSha256: "",
-			YomiID:      -1,
-			StatusCode:  404,
+			ID:         "",
+			Score:      -1,
+			Malware:    "",
+			Hash:       "",
+			StatusCode: 404,
 		}
 	}
 
 	// return hash found info
 	return models.Status{
-		Score:       respHash[0].Score,
-		Malware:     respHash[0].Threat.Name,
-		YoroiSha256: respHash[0].File.Hash.Sha256,
-		YomiID:      0,
-		StatusCode:  200,
+		ID:         "",
+		Score:      respHash[0].Score,
+		Malware:    respHash[0].Threat.Name,
+		Hash:       respHash[0].File.Hash.Sha256,
+		StatusCode: 200,
 	}
 
+}
+
+func UploadYomiFile(filename string) models.Status {
+	// get authentication bearer
+	bearer := Authenticate()
+
+	// create url
+	url := configuration.Config.YomiBaseURL + "/papi/sandbox"
+
+	// read file
+	file, _ := os.Open(filename)
+	defer file.Close()
+
+	// create form data
+	fileBody := &bytes.Buffer{}
+	writer := multipart.NewWriter(fileBody)
+	part, _ := writer.CreateFormFile("file", filepath.Base(file.Name()))
+	io.Copy(part, file)
+	writer.Close()
+
+	// make request
+	req, err := http.NewRequest("POST", url, fileBody)
+	req.Header.Set("Authorization", "Bearer "+bearer)
+	req.Header.Add("Content-Type", writer.FormDataContentType())
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	// check request status codes
+	if resp.StatusCode != 200 {
+		return models.Status{
+			ID:         "",
+			Score:      -1,
+			Malware:    "",
+			Hash:       "",
+			StatusCode: resp.StatusCode,
+		}
+	}
+
+	// parse body to json
+	body, _ := ioutil.ReadAll(resp.Body)
+	var respSandbox models.Sandbox
+	err = json.Unmarshal(body, &respSandbox)
+
+	// check json parsing
+	if err != nil {
+		return models.Status{
+			ID:         "",
+			Score:      -1,
+			Malware:    "",
+			Hash:       "",
+			StatusCode: 500,
+		}
+	}
+
+	// hash submitted but waiting
+	if respSandbox.V == 0 || respSandbox.ID == "" {
+		return models.Status{
+			ID:         "",
+			Score:      -1,
+			Malware:    "",
+			Hash:       "",
+			StatusCode: 202,
+		}
+	}
+
+	// return hash found info
+	return models.Status{
+		ID:         respSandbox.ID,
+		Score:      respSandbox.Score,
+		Malware:    respSandbox.Threat.Name,
+		Hash:       respSandbox.File.Hash.Sha256,
+		StatusCode: 200,
+	}
 }

@@ -46,11 +46,12 @@ func main() {
 	// init routers
 	router := gin.Default()
 
+	// define endpoints
 	api := router.Group("/api")
 	{
 		api.GET("/status", methods.CheckStatus)
 		api.GET("/hash/:hash", methods.CheckHash)
-		//api.POST("/submit", methods.Submit)
+		api.POST("/submit", methods.Submit)
 	}
 
 	// handle missing endpoint
@@ -58,6 +59,7 @@ func main() {
 		c.JSON(http.StatusNotFound, gin.H{"message": "API not found"})
 	})
 
+	// start router
 	router.Run()
 
 }
